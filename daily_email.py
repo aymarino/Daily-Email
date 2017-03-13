@@ -128,7 +128,7 @@ def header(string):
 
 def main():
     w = Weather()
-    d = Day(date.today() + timedelta(days=2))
+    d = Day(date.today())
 
     email_body = "Sup bruh" + endline() + endline()
 
