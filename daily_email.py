@@ -1,6 +1,8 @@
 from datetime import datetime, date, timedelta
 import pytz
+
 import requests, json
+
 import smtplib
 from email.mime.text import MIMEText
 
@@ -15,6 +17,9 @@ class Configuration:
             self.email_address = config['email_address']
             self.email_password = config['email_password']
             self.recipient_address = config['recipient_address']
+            self.weather_key = config['wunderground_key']
+            self.state = config['state']
+            self.city = config['city']
 
 config = Configuration('config.json')
 
@@ -106,28 +111,41 @@ class Day:
                 end = self._parsetime(e['end'])
                 self.schedule_events.append(ScheduledEvent(e['summary'], location, start, end))
 
+class Weather():
+    def __init__(self, state=config.state, city=config.city):
+        url = "http://api.wunderground.com/api/{}/forecast/q/{}/{}.json".format(config.weather_key, state, city)
+        r = requests.get(url)
+
+        forecast_day_obj = r.json()['forecast']['txt_forecast']['forecastday']
+        self.day_forecast = forecast_day_obj[0]['title'] + ": " + forecast_day_obj[0]['fcttext_metric'] # aw yeah degrees Celcius
+        self.night_forecast = forecast_day_obj[1]['title'] + ": " + forecast_day_obj[1]['fcttext_metric']
+
 def endline():
     return "<br>"
 
 def header(string):
-    return "<b>" + string + "</b>" + endline()
+    return "<b>" + string + "</b>"
 
 def main():
+    w = Weather()
     d = Day(date.today() + timedelta(days=2))
+
     email_body = "Sup bruh" + endline() + endline()
-    email_body += header("Today's calendar has:")
 
-    email_body += "<ul>"
+    email_body += header("Weather forecast:") + endline()
+    email_body += w.day_forecast + endline()
+    email_body += w.night_forecast + endline()
+
+    email_body += endline() + header("Today's calendar has:") + endline()
+
     for e in d.all_day_events:
-        email_body += "<li>" + e.title + "</li>" + '\n'
-    email_body += "</ul>"
+        email_body += "<i>" + e.title + "</i>" + endline()
 
-    email_body += header("Today's schedule:")
     for e in d.schedule_events:
-        event_string = e.get_start() + " - " + e.get_end() + ": " + e.title + ' (' + e.location + ')' + endline()
+        event_string = e.get_start() + " - " + e.get_end() + ": <i>" + e.title + "</i> (" + e.location + ")" + endline()
         email_body += event_string
     
-    email = Email("Schedule for " + str(date.today()), email_body)
+    email = Email("Summary for " + str(date.today()), email_body)
     email.send()
 
 if __name__ == '__main__':
