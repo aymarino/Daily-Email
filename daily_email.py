@@ -45,7 +45,8 @@ class Email:
         server.close()
 
 class Event:
-    def __init__(self, title, location, date):
+    def __init__(self, calendar, title, location, date):
+        self.calendar = calendar
         self.title = title
         self.location = location
         self.date = date
@@ -54,8 +55,8 @@ class Event:
         return str(self.date)
 
 class ScheduledEvent(Event):
-    def __init__(self, title, location, startTime, endTime):
-        Event.__init__(self, title, location, startTime.date())
+    def __init__(self, calendar, title, location, startTime, endTime):
+        Event.__init__(self, calendar, title, location, startTime.date())
         self.startTime = startTime.astimezone(config.timezone)
         self.endTime = endTime.astimezone(config.timezone)
 
@@ -74,7 +75,17 @@ class ScheduledEvent(Event):
     def get_end(self):
         return self._formattime(self.endTime)
 
-class Day:
+class Calendar:
+    def __init__(self):
+        cronofy_base_url = "https://api.cronofy.com/v1/calendars"
+        headers = {"Authorization" : config.cronofy_key}
+        r = requests.get(cronofy_base_url, headers=headers)
+
+        self.calendars = {}
+        for c in r.json()['calendars']:
+            self.calendars[c['calendar_id']] = c['calendar_name']
+
+class Day(Calendar):
     # Lists of the day's events
     all_day_events = []
     schedule_events = []
@@ -85,6 +96,7 @@ class Day:
     
     # Instantiates calendar with events from specified date
     def __init__(self, date):
+        Calendar.__init__(self)
         end_date = date + timedelta(days=1)
 
         # Build GET request string
@@ -100,16 +112,20 @@ class Day:
             if 'location' in e:
                 location = e['location']['description']
             
+            calendar = ''
+            if e['calendar_id'] in self.calendars:
+                calendar = self.calendars[e['calendar_id']]
+            
             # start time format if all-day event: %Y-%m-%d (YYYY-MM-DD, 10 characters)
             # start time format if not all-day: %Y-%m-%dT%H:%M:%SZ
             if len(e['start']) == 10:
                 # all-day event
-                self.all_day_events.append(Event(e['summary'], location, date)) # uses the date given to this Day
+                self.all_day_events.append(Event(calendar, e['summary'], location, date)) # uses the date given to this Day
             else:
                 # scheduled event
                 start = self._parsetime(e['start'])
                 end = self._parsetime(e['end'])
-                self.schedule_events.append(ScheduledEvent(e['summary'], location, start, end))
+                self.schedule_events.append(ScheduledEvent(calendar, e['summary'], location, start, end))
 
 class Weather():
     def __init__(self, state=config.state, city=config.city):
@@ -139,10 +155,10 @@ def main():
     email_body += endline() + header("Today's calendar has:") + endline()
 
     for e in d.all_day_events:
-        email_body += "<i>" + e.title + "</i>" + endline()
+        email_body += e.calendar + ", <i>" + e.title + "</i>" + endline()
 
     for e in d.schedule_events:
-        event_string = e.get_start() + " - " + e.get_end() + ": <i>" + e.title + "</i> (" + e.location + ")" + endline()
+        event_string = e.get_start() + " - " + e.get_end() + ": " + e.calendar + ", <i>" + e.title + "</i> (" + e.location + ")" + endline()
         email_body += event_string
     
     email = Email("Summary for " + str(date.today()), email_body)
