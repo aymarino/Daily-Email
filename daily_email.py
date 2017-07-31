@@ -6,6 +6,8 @@ import requests, json
 import smtplib
 from email.mime.text import MIMEText
 
+from todoist.api import TodoistAPI
+
 # Calendar and email parameters are stored in a JSON file, this loads it
 class Configuration:
     def __init__(self, filename):
@@ -13,6 +15,7 @@ class Configuration:
             config = json.load(config_file)
 
             self.cronofy_key = config['cronofy_key']
+            self.todoist_key = config['todoist_key']
             self.timezone = pytz.timezone(config['timezone'])
             self.email_address = config['email_address']
             self.email_password = config['email_password']
@@ -43,6 +46,51 @@ class Email:
         server.login(self.email['From'], self.password)
         server.sendmail(self.email['From'], [self.email['To']], self.email.as_string())
         server.close()
+
+class Item:
+    def __init__(self, name, project, due):
+        self.name = name
+        self.project = project
+        self.due_date = due
+    
+    def get_date(self):
+        return self.due_date.strftime('%a, %b %d')
+
+class Todo:
+    def _get_item_due_date(self, item):
+        time_str = item['due_date_utc']
+        date = datetime.strptime(time_str, '%a %d %b %Y %H:%M:%S %z').replace(tzinfo=pytz.UTC) 
+        local_date = date.astimezone(config.timezone)
+        return local_date
+
+    def _parseitem(self, item):
+        name = item['content']
+        project = self.projects[item['project_id']]
+        due_date = self._get_item_due_date(item)
+        return Item(name, project, due_date)
+
+    def __init__(self):
+        # Sync the items
+        self.api = TodoistAPI(config.todoist_key)
+        self.api.sync()
+
+        # Associate project id with names
+        self.projects = {}
+        for project in self.api.state['projects']:
+            self.projects[project['id']] = project['name']
+    
+    def get_due_items(self):
+        due_items = []
+        today = datetime.utcnow()
+        for item in self.api.state['items']:
+            due_date = item['due_date_utc']
+            if (due_date):
+                due_utc = datetime.strptime(due_date[:15], '%a %d %b %Y')
+                if due_utc < today:
+                    due_items.append(self._parseitem(item))
+        # Sort items by due date
+        due_items.sort(key=lambda item: item.due_date)
+        return due_items
 
 class Event:
     def __init__(self, calendar, title, location, date):
@@ -160,7 +208,17 @@ def main():
     for e in d.schedule_events:
         event_string = e.get_start() + " - " + e.get_end() + ": " + e.calendar + ", <i>" + e.title + "</i> (" + e.location + ")" + endline()
         email_body += event_string
-    
+
+    email_body += endline() + header("Todo list for today:") + endline()
+
+    t = Todo()
+    due = t.get_due_items()
+    for item in due:
+        item_str = item.get_date() + ": " + item.name + ", "
+        item_str += "<i>" + item.project + "</i>" + endline()
+        email_body += item_str
+
+    print(email_body)
     email = Email("Summary for " + str(date.today()), email_body)
     email.send()
 
