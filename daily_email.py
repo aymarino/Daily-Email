@@ -58,8 +58,8 @@ class Item:
 
 class Todo:
     def _get_item_due_date(self, item):
-        time_str = item['due_date_utc']
-        date = datetime.strptime(time_str, '%a %d %b %Y %H:%M:%S %z').replace(tzinfo=pytz.UTC) 
+        time_str = item['due_date_utc'][:-6]
+        date = datetime.strptime(time_str, '%a %d %b %Y %H:%M:%S').replace(tzinfo=pytz.UTC) 
         local_date = date.astimezone(config.timezone)
         return local_date
 
