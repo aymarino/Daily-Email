@@ -83,6 +83,8 @@ class Todo:
         due_items = []
         today = datetime.utcnow()
         for item in self.api.state['items']:
+            if item['checked'] == 1:
+                continue
             due_date = item['due_date_utc']
             if (due_date):
                 due_utc = datetime.strptime(due_date[:15], '%a %d %b %Y')
