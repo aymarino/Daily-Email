@@ -1,29 +1,14 @@
 from datetime import datetime, date, timedelta
 import pytz
-
 import requests, json
-
 import smtplib
 from email.mime.text import MIMEText
-
 from todoist.api import TodoistAPI
 
+from config import Configuration
+from finance import Finance
+
 # Calendar and email parameters are stored in a JSON file, this loads it
-class Configuration:
-    def __init__(self, filename):
-        with open(filename) as config_file:
-            config = json.load(config_file)
-
-            self.cronofy_key = config['cronofy_key']
-            self.todoist_key = config['todoist_key']
-            self.timezone = pytz.timezone(config['timezone'])
-            self.email_address = config['email_address']
-            self.email_password = config['email_password']
-            self.recipient_address = config['recipient_address']
-            self.weather_key = config['wunderground_key']
-            self.state = config['state']
-            self.city = config['city']
-
 config = Configuration('config.json')
 
 class Email:
@@ -187,8 +172,21 @@ class Weather():
 def endline():
     return "<br>"
 
-def header(string):
+def bold(string):
     return "<b>" + string + "</b>"
+
+def italics(string):
+    return "<i>" + string + "</i>"
+
+def red(string):
+    return '<font color="red">' + string + '</font>'
+
+def green(string):
+    return '<font color="green">' + string + '</font>'
+
+def money(dollars_as_float):
+    amount_str = "$" + "{:,.2f}".format(abs(dollars_as_float))
+    return red(amount_str) if dollars_as_float < 0 else green(amount_str)
 
 def main():
     w = Weather()
@@ -196,27 +194,55 @@ def main():
 
     email_body = "Sup bruh" + endline() + endline()
 
-    email_body += header("Weather forecast:") + endline()
+    email_body += bold("Weather forecast:") + endline()
     email_body += w.day_forecast + endline()
     email_body += w.night_forecast + endline()
 
-    email_body += endline() + header("Today's calendar has:") + endline()
+    email_body += endline() + bold("Today's calendar has:") + endline()
 
     for e in d.all_day_events:
-        email_body += e.calendar + ", <i>" + e.title + "</i>" + endline()
+        email_body += e.calendar + ", " + italics(e.title) + endline()
 
     for e in d.schedule_events:
-        event_string = e.get_start() + " - " + e.get_end() + ": " + e.calendar + ", <i>" + e.title + "</i> (" + e.location + ")" + endline()
+        event_string = e.get_start() + " - " + e.get_end() + ": " + e.calendar + ", " + italics(e.title) + "(" + e.location + ")" + endline()
         email_body += event_string
 
-    email_body += endline() + header("Todo list for today:") + endline()
+    email_body += endline() + bold("Todo list for today:") + endline()
 
     t = Todo()
     due = t.get_due_items()
     for item in due:
         item_str = item.get_date() + ": " + item.name + ", "
-        item_str += "<i>" + item.project + "</i>" + endline()
+        item_str += italics(item.project) + endline()
         email_body += item_str
+
+    f = Finance()
+
+    accts = f.getAccounts()
+    acct_changes = {}
+    for name in accts.keys():
+        acct_changes[name] = 0.0
+
+    transactions = f.getLastNDaysTransactions(1)
+    transaction_description = ""
+    for t in transactions:
+        transaction_description += t.description + ": " + money(t.amount) + ", " + italics(t.account) + endline()
+        acct_changes[t.account] += t.amount
+
+    account_desc = ""
+    net_worth = 0.0
+    for name, val in accts.items():
+        account_desc += italics(name) + ": " + money(val)
+        net_worth += val
+        if (acct_changes[name] != 0.0):
+            change = money(acct_changes[name])
+            account_desc += ", " + change + " change since yesterday"
+        account_desc += endline()
+
+    account_desc += italics("Net worth: ") + money(net_worth) + endline()
+
+    email_body += endline() + bold("Accounts and Transactions") + endline()
+    email_body += account_desc + endline() + transaction_description
 
     print(email_body)
     email = Email("Summary for " + str(date.today()), email_body)
