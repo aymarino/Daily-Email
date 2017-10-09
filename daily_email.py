@@ -43,8 +43,8 @@ class Item:
 
 class Todo:
     def _get_item_due_date(self, item):
-        time_str = item['due_date_utc']
-        date = datetime.strptime(time_str, '%a %d %b %Y %H:%M:%S %z').replace(tzinfo=pytz.UTC) 
+        time_str = item['due_date_utc'][:-6]
+        date = datetime.strptime(time_str, '%a %d %b %Y %H:%M:%S').replace(tzinfo=pytz.UTC) 
         local_date = date.astimezone(config.timezone)
         return local_date
 
@@ -68,6 +68,8 @@ class Todo:
         due_items = []
         today = datetime.utcnow()
         for item in self.api.state['items']:
+            if item['checked'] == 1:
+                continue
             due_date = item['due_date_utc']
             if (due_date):
                 due_utc = datetime.strptime(due_date[:15], '%a %d %b %Y')
