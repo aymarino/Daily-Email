@@ -17,5 +17,3 @@ class Configuration:
             self.city = config['city']
             self.mint_email = config['mint_email']
             self.mint_password = config['mint_password']
-            self.mint_ius_session = config['mint_ius_session']
-            self.mint_thx_guid = config['mint_thx_guid']

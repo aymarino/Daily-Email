@@ -19,7 +19,7 @@ class Transaction:
 
 class Finance:
     def __init__(self):
-        self.mint = mintapi.Mint(config.mint_email, config.mint_password, config.mint_ius_session, config.mint_thx_guid)
+        self.mint = mintapi.Mint(config.mint_email, config.mint_password)
 
     def getAccounts(self):
         accounts = {}
