@@ -1,44 +1,13 @@
 from datetime import datetime, date, timedelta
 import pytz
 import requests, json
-import smtplib
-from email.mime.text import MIMEText
+from email_util import Email, endline, bold, italics, money
 
 from config import Configuration
 from finance import Finance
 
 # Calendar and email parameters are stored in a JSON file, this loads it
 config = Configuration('config.json')
-
-class Email:
-    def __init__(self, subject, body,
-        sender=config.email_address,
-        password=config.email_password,
-        recipient_address=config.recipient_address):
-
-        self.email = MIMEText(body, 'html')
-        self.email['Subject'] = subject
-        self.email['From'] = sender
-        self.email['To'] = recipient_address
-
-        self.password = password
-
-    def send(self):
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.ehlo()
-        server.starttls()
-        server.login(self.email['From'], self.password)
-        server.sendmail(self.email['From'], [self.email['To']], self.email.as_string())
-        server.close()
-
-class Item:
-    def __init__(self, name, project, due):
-        self.name = name
-        self.project = project
-        self.due_date = due
-    
-    def get_date(self):
-        return self.due_date.strftime('%a, %b %d')
 
 class Event:
     def __init__(self, calendar, title, location, date):
@@ -132,25 +101,6 @@ class Weather():
         self.day_forecast = forecast_day_obj[0]['title'] + ": " + forecast_day_obj[0]['fcttext_metric'] # aw yeah degrees Celcius
         self.night_forecast = forecast_day_obj[1]['title'] + ": " + forecast_day_obj[1]['fcttext_metric']
 
-def endline():
-    return "<br>"
-
-def bold(string):
-    return "<b>" + string + "</b>"
-
-def italics(string):
-    return "<i>" + string + "</i>"
-
-def red(string):
-    return '<font color="red">' + string + '</font>'
-
-def green(string):
-    return '<font color="green">' + string + '</font>'
-
-def money(dollars_as_float):
-    amount_str = "$" + "{:,.2f}".format(abs(dollars_as_float))
-    return red(amount_str) if dollars_as_float < 0 else green(amount_str)
-
 def main():
     w = Weather()
     d = Day(date.today())
@@ -199,7 +149,8 @@ def main():
     email_body += account_desc + endline() + transaction_description
 
     print(email_body)
-    email = Email("Summary for " + str(date.today()), email_body)
+    email = Email("Summary for " + str(date.today()), email_body, config.email_address, 
+                  config.email_password, config.recipient_address)
     email.send()
 
 if __name__ == '__main__':

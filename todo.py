@@ -1,4 +1,14 @@
 from todoist.api import TodoistAPI
+from datetime import datetime
+
+class Item:
+    def __init__(self, name, project, due):
+        self.name = name
+        self.project = project
+        self.due_date = due
+    
+    def get_date(self):
+        return self.due_date.strftime('%a, %b %d')
 
 class Todo:
     def _get_item_due_date(self, item):
