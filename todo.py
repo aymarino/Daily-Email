@@ -1,5 +1,6 @@
 from todoist.api import TodoistAPI
 from datetime import datetime
+import pytz
 
 class Item:
     def __init__(self, name, project, due):
@@ -14,7 +15,7 @@ class Todo:
     def _get_item_due_date(self, item):
         time_str = item['due_date_utc'][:-6]
         date = datetime.strptime(time_str, '%a %d %b %Y %H:%M:%S').replace(tzinfo=pytz.UTC) 
-        local_date = date.astimezone(config.timezone)
+        local_date = date.astimezone(self.timezone)
         return local_date
 
     def _parseitem(self, item):
@@ -23,10 +24,11 @@ class Todo:
         due_date = self._get_item_due_date(item)
         return Item(name, project, due_date)
 
-    def __init__(self):
+    def __init__(self, key, timezone):
         # Sync the items
-        self.api = TodoistAPI(config.todoist_key)
+        self.api = TodoistAPI(key)
         self.api.sync()
+        self.timezone = timezone
 
         # Associate project id with names
         self.projects = {}
