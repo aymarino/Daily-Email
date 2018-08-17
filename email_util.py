@@ -33,6 +33,9 @@ def red(string):
 def green(string):
     return '<font color="green">' + string + '</font>'
 
-def money(dollars_as_float):
+def money(dollars_as_float, color=True):
     amount_str = "$" + "{:,.2f}".format(abs(dollars_as_float))
-    return red(amount_str) if dollars_as_float < 0 else green(amount_str)
+    if color:
+        return red(amount_str) if dollars_as_float < 0 else green(amount_str)
+    else:
+        return amount_str

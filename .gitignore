@@ -1,4 +1,5 @@
 config.json
+book.json
 
 __pycache__/
 .vscode/
