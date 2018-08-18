@@ -20,7 +20,7 @@ def pct_change_str(start_value, end_value):
 
 def get_ticker_summary(book, ticker):
     quantity = book.get_quantity(ticker)
-    price_change = book.get_ticker_change(ticker)
+    price_change = book.get_price_change(ticker)
     current_price = book.get_price(ticker)
     prev_price = book.get_price_prev(ticker)
 
@@ -41,8 +41,12 @@ def main():
     email_body = "Sup" + endline() + endline()
     email_body += bold("Changes in current book:") + endline()
 
-    for ticker in book.book:
-        email_body += get_ticker_summary(book, ticker) + endline()
+    sorted_positions = sorted(book.book.items(),
+                              key = lambda position: book.get_ticker_change(position[0]),
+                              reverse = True)
+
+    for ticker in sorted_positions:
+        email_body += get_ticker_summary(book, ticker[0]) + endline()
     
     starting_balance = book.get_portfolio_value_prev()
     ending_balance = book.get_portfolio_value()

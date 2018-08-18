@@ -74,13 +74,16 @@ class Book:
     # 'Previous' value being teh point-of-reference from the quote
     # I.e. previous day's close
     def get_price_prev(self, ticker):
-        return self.get_price(ticker) - self.get_ticker_change(ticker)
+        return self.get_price(ticker) - self.get_price_change(ticker)
     
+    def get_price_change(self, ticker):
+        return self.iex_interface.get_change(ticker)
+
+    def get_ticker_change(self, ticker):
+        return self.get_price_change(ticker) * self.get_quantity(ticker)
+
     def get_value(self, ticker):
         return self.get_quantity(ticker) * self.get_price(ticker)
-    
-    def get_ticker_change(self, ticker):
-        return self.iex_interface.get_change(ticker)
 
     def get_portfolio_value(self):
         return sum([self.get_value(ticker) for ticker in self.book])
